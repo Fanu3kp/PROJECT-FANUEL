@@ -1,41 +1,67 @@
 <?php
-  /**
-  * Requires the "PHP Email Form" library
-  * The "PHP Email Form" library is available only in the pro version of the template
-  * The library should be uploaded to: vendor/php-email-form/php-email-form.php
-  * For more info and help: https://bootstrapmade.com/php-email-form/
-  */
-
-  // Replace contact@example.com with your real receiving email address
+  // Receiving email address
   $receiving_email_address = 'fanuelokeno@gmail.com';
 
-  if( file_exists($php_email_form = '../assets/vendor/php-email-form/php-email-form.php' )) {
-    include( $php_email_form );
+  // Check if form was submitted
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // Get form data and sanitize
+    $name = htmlspecialchars(trim($_POST['name'] ?? ''));
+    $email = htmlspecialchars(trim($_POST['email'] ?? ''));
+    $subject = htmlspecialchars(trim($_POST['subject'] ?? ''));
+    $message = htmlspecialchars(trim($_POST['message'] ?? ''));
+
+    // Validate form fields
+    if (empty($name) || empty($email) || empty($subject) || empty($message)) {
+      echo json_encode(['success' => false, 'message' => 'All fields are required']);
+      exit;
+    }
+
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+      echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+      exit;
+    }
+
+    // Prepare email headers
+    $headers = "From: " . $email . "\r\n";
+    $headers .= "Reply-To: " . $email . "\r\n";
+    $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+
+    // Prepare email body
+    $body = "<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .email-container { background-color: #f4f4f4; padding: 20px; }
+        .email-content { background-color: #ffffff; padding: 20px; border-radius: 5px; }
+        .field-label { font-weight: bold; color: #333; }
+        .field-value { color: #666; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class='email-container'>
+        <div class='email-content'>
+            <h2>New Contact Form Submission</h2>
+            <p class='field-value'><span class='field-label'>From:</span> {$name}</p>
+            <p class='field-value'><span class='field-label'>Email:</span> {$email}</p>
+            <p class='field-value'><span class='field-label'>Subject:</span> {$subject}</p>
+            <p class='field-value'><span class='field-label'>Message:</span></p>
+            <p style='background-color: #f9f9f9; padding: 15px; border-left: 4px solid #007bff;'>{$message}</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+    // Send email
+    if (mail($receiving_email_address, $subject, $body, $headers)) {
+      echo json_encode(['success' => true, 'message' => 'Your message has been sent successfully!']);
+    } else {
+      echo json_encode(['success' => false, 'message' => 'Failed to send email. Please try again later.']);
+    }
   } else {
-    die( 'Unable to load the "PHP Email Form" Library!');
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
   }
-
-  $contact = new PHP_Email_Form;
-  $contact->ajax = true;
-  
-  $contact->to = $receiving_email_address;
-  $contact->from_name = $_POST['name'];
-  $contact->from_email = $_POST['email'];
-  $contact->subject = $_POST['subject'];
-
-  // Uncomment below code if you want to use SMTP to send emails. You need to enter your correct SMTP credentials
-  /*
-  $contact->smtp = array(
-    'host' => 'example.com',
-    'username' => 'example',
-    'password' => 'pass',
-    'port' => '587'
-  );
-  */
-
-  $contact->add_message( $_POST['name'], 'From');
-  $contact->add_message( $_POST['email'], 'Email');
-  $contact->add_message( $_POST['message'], 'Message', 10);
-
-  echo $contact->send();
 ?>
